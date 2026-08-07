@@ -10,6 +10,8 @@
     "db:status": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 status",
     "db:reset": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 reset",
     "db:psql": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 psql",
+    "deploy": "powershell -ExecutionPolicy Bypass -File scripts/deploy-portainer.ps1",
+    "deploy:update": "powershell -ExecutionPolicy Bypass -File scripts/deploy-portainer.ps1 -Update",
     "dev:api": "npm --prefix apps/api run dev",
     "dev:web": "npm --prefix apps/web run dev",
     "build": "npm --prefix apps/api run build && npm --prefix apps/web run build",
