@@ -224,7 +224,10 @@ if ($existing) {
     repositoryAuthentication = $body.repositoryAuthentication
     repositoryUsername       = $body.repositoryUsername
     repositoryPassword       = $body.repositoryPassword
-    pullImage                = $true
+    # As imagens da API e do frontend sao construidas a partir do proprio
+    # repositorio (build context), nao existem em registry nenhum. Com
+    # pullImage=true o Portainer tenta `docker pull vedas/api` e falha.
+    pullImage                = $false
     prune                    = $false
   }
   $stackId = $existing.Id

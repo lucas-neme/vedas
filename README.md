@@ -78,10 +78,29 @@ A stack sobe três containers: **db** (o Postgres próprio da loja), **api** e
 | `pgadmin` | `tools` | pgAdmin no navegador para administrar o banco |
 
 ```bash
+docker network create proxynet            # uma vez, antes do primeiro deploy
 docker compose up -d                      # db + api + web
 docker compose --profile backup up -d     # + backup diário
-docker compose --profile tools  up -d     # + pgAdmin em :5050
+docker compose --profile tools  up -d     # + pgAdmin
 ```
+
+### Exposição: nenhuma porta publicada
+
+Nenhum serviço da stack publica porta no host. O banco e a API existem só
+dentro da rede privada `vedas` — o Postgres **não** é alcançável de fora do
+servidor. Apenas o `web` entra também na rede `proxynet`, onde o seu reverse
+proxy (Nginx Proxy Manager, Traefik, Caddy…) o encontra pelo nome do container:
+
+```
+seu-dominio.com.br  →  http://vedas-web:80
+```
+
+O proxy cuida do TLS. No Nginx Proxy Manager, um *Proxy Host* com
+**Forward Hostname** `vedas-web` e **Forward Port** `80` resolve — desde que o
+container do proxy também esteja na rede `proxynet`.
+
+Para rodar numa máquina isolada, sem reverse proxy, o cabeçalho do
+`docker-compose.yml` explica como voltar a publicar a porta do `web`.
 
 ### 1. Publique o código em um repositório Git
 O Portainer precisa do repositório para conseguir *buildar* as imagens da API e
