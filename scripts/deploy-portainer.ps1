@@ -168,10 +168,10 @@ Write-Host "      ambiente: '$($endpoint.Name)' (ID $endpointId)" -ForegroundCol
 
 # ── 3. Variaveis da stack ────────────────────────────────────────────────────
 $stackVarNames = @(
-  'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB', 'POSTGRES_PORT',
-  'WEB_PORT', 'JWT_SECRET', 'TZ',
+  'POSTGRES_USER', 'POSTGRES_PASSWORD', 'POSTGRES_DB',
+  'JWT_SECRET', 'TZ',
   'ADMIN_EMAIL', 'ADMIN_PASSWORD', 'SEED_ON_START', 'NFE_ENVIRONMENT',
-  'BACKUP_INTERVAL', 'BACKUP_KEEP_DAYS', 'PGADMIN_PORT', 'PGADMIN_PASSWORD'
+  'BACKUP_INTERVAL', 'BACKUP_KEEP_DAYS', 'PGADMIN_PASSWORD'
 )
 
 $stackEnv = @()
@@ -267,15 +267,12 @@ catch {
   Write-Host "   (nao consegui listar os containers: $($_.Exception.Message))" -ForegroundColor DarkGray
 }
 
-$webPort = if ($vars['WEB_PORT']) { $vars['WEB_PORT'] } else { '8080' }
-$hostName = ([System.Uri]$portainerUrl).Host
-
 Write-Host ""
 Write-Host "Stack no ar." -ForegroundColor Green
-Write-Host "   CRM:     http://${hostName}:${webPort}"
-Write-Host "   Login:   $($vars['ADMIN_EMAIL'])"
-Write-Host "   Senha:   a que voce definiu em ADMIN_PASSWORD"
+if ($vars['PUBLIC_URL']) { Write-Host "   CRM:   $($vars['PUBLIC_URL'])" }
+Write-Host "   Login: $($vars['ADMIN_EMAIL'])"
+Write-Host "   Senha: a que voce definiu em ADMIN_PASSWORD"
 Write-Host ""
-Write-Host "O primeiro build leva alguns minutos. Se a pagina ainda nao abrir,"
-Write-Host "acompanhe os logs do container vedas-api pelo Portainer."
+Write-Host "Nenhuma porta e publicada no host: quem expoe o CRM e o reverse"
+Write-Host "proxy, encaminhando o dominio para vedas-web:80 na rede proxynet."
 Write-Host ""

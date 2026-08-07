@@ -10,6 +10,18 @@ name: vedas
 # Serviços opcionais, ativados por profile:
 #   backup    docker compose --profile backup up -d     (dump diário do banco)
 #   pgadmin   docker compose --profile tools  up -d     (admin web do Postgres)
+#
+# ── Exposição ────────────────────────────────────────────────────────────────
+# NENHUM serviço publica porta no host. O banco e a API só existem dentro da
+# rede interna `vedas`; apenas o `web` também entra na rede `proxynet`, onde
+# o reverse proxy o alcança por nome (`vedas-web:80`) e cuida de TLS.
+#
+# Antes do primeiro deploy, a rede compartilhada precisa existir no host:
+#     docker network create proxynet
+#
+# Para rodar sem reverse proxy (uma máquina isolada, por exemplo), troque
+# `external: true` por `driver: bridge` no fim do arquivo e publique a porta
+# do `web` adicionando:  ports: ["8080:80"]
 # ─────────────────────────────────────────────────────────────────────────────
 
 x-logging: &default-logging
@@ -33,10 +45,9 @@ services:
       PGTZ: ${TZ:-America/Sao_Paulo}
     volumes:
       - vedas_pgdata:/var/lib/postgresql/data
-    ports:
-      # Exposto apenas para administração externa (DBeaver/pgAdmin).
-      # Comente esta seção se não quiser expor o banco na rede.
-      - "${POSTGRES_PORT:-5433}:5432"
+    # Sem `ports`: o banco só é alcançável de dentro da rede `vedas`.
+    # Para administrar de fora, use o pgAdmin (profile "tools") ou um túnel
+    # SSH — nunca publique a porta do Postgres na internet.
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vedas} -d ${POSTGRES_DB:-vedas}"]
       interval: 10s
@@ -91,8 +102,8 @@ services:
       - api
     environment:
       TZ: ${TZ:-America/Sao_Paulo}
-    ports:
-      - "${WEB_PORT:-8080}:80"
+    # Sem `ports`: quem publica 80/443 é o reverse proxy, que alcança este
+    # container por nome dentro da rede `proxynet`.
     healthcheck:
       test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1"]
       interval: 30s
@@ -101,6 +112,7 @@ services:
       start_period: 10s
     networks:
       - vedas
+      - proxynet
 
   # ── Backup diário do banco (profile: backup) ───────────────────────────────
   backup:
@@ -159,12 +171,13 @@ services:
       PGADMIN_CONFIG_SERVER_MODE: "False"
       PGADMIN_DISABLE_POSTFIX: "True"
       TZ: ${TZ:-America/Sao_Paulo}
-    ports:
-      - "${PGADMIN_PORT:-5050}:80"
+    # Também sem porta publicada: publique via reverse proxy num subdomínio
+    # protegido, apontando para `vedas-pgadmin:80` na rede `proxynet`.
     volumes:
       - vedas_pgadmin:/var/lib/pgadmin
     networks:
       - vedas
+      - proxynet
 
 volumes:
   vedas_pgdata:
@@ -175,6 +188,12 @@ volumes:
     name: vedas_pgadmin
 
 networks:
+  # Rede privada da loja: banco, API e frontend conversam só aqui.
   vedas:
     name: vedas
     driver: bridge
+  # Rede compartilhada com o reverse proxy. Precisa existir no host:
+  #     docker network create proxynet
+  proxynet:
+    name: proxynet
+    external: true
