@@ -1,0 +1,180 @@
+name: vedas
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Stack completa do Vedas CRM.
+#
+#   db      Postgres próprio da loja (dados em volume nomeado)
+#   api     API TypeScript (Fastify) — aplica migrations e seed no boot
+#   web     Frontend React servido por nginx, com proxy /api → api
+#
+# Serviços opcionais, ativados por profile:
+#   backup    docker compose --profile backup up -d     (dump diário do banco)
+#   pgadmin   docker compose --profile tools  up -d     (admin web do Postgres)
+# ─────────────────────────────────────────────────────────────────────────────
+
+x-logging: &default-logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vedas-db
+    restart: unless-stopped
+    logging: *default-logging
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-vedas}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-vedas_dev_password}
+      POSTGRES_DB: ${POSTGRES_DB:-vedas}
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      TZ: ${TZ:-America/Sao_Paulo}
+      PGTZ: ${TZ:-America/Sao_Paulo}
+    volumes:
+      - vedas_pgdata:/var/lib/postgresql/data
+    ports:
+      # Exposto apenas para administração externa (DBeaver/pgAdmin).
+      # Comente esta seção se não quiser expor o banco na rede.
+      - "${POSTGRES_PORT:-5433}:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-vedas} -d ${POSTGRES_DB:-vedas}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks:
+      - vedas
+
+  api:
+    build:
+      context: ./apps/api
+      dockerfile: Dockerfile
+    image: ${API_IMAGE:-vedas/api:latest}
+    container_name: vedas-api
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3333
+      TZ: ${TZ:-America/Sao_Paulo}
+      DATABASE_URL: postgres://${POSTGRES_USER:-vedas}:${POSTGRES_PASSWORD:-vedas_dev_password}@db:5432/${POSTGRES_DB:-vedas}
+      JWT_SECRET: ${JWT_SECRET:-troque-este-segredo-em-producao}
+      # Ambiente fiscal: 2 = homologação (padrão), 1 = produção
+      NFE_ENVIRONMENT: ${NFE_ENVIRONMENT:-2}
+      SEED_ON_START: ${SEED_ON_START:-true}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@vedas.com.br}
+      # Obrigatória: a stack não sobe sem ela. Nenhuma senha padrão no código.
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:?defina ADMIN_PASSWORD nas variaveis da stack}
+    healthcheck:
+      test:
+        ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:3333/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - vedas
+
+  web:
+    build:
+      context: ./apps/web
+      dockerfile: Dockerfile
+    image: ${WEB_IMAGE:-vedas/web:latest}
+    container_name: vedas-web
+    restart: unless-stopped
+    logging: *default-logging
+    depends_on:
+      - api
+    environment:
+      TZ: ${TZ:-America/Sao_Paulo}
+    ports:
+      - "${WEB_PORT:-8080}:80"
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://127.0.0.1/health || exit 1"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    networks:
+      - vedas
+
+  # ── Backup diário do banco (profile: backup) ───────────────────────────────
+  backup:
+    image: postgres:16-alpine
+    container_name: vedas-backup
+    restart: unless-stopped
+    profiles: ["backup"]
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGHOST: db
+      PGUSER: ${POSTGRES_USER:-vedas}
+      PGPASSWORD: ${POSTGRES_PASSWORD:-vedas_dev_password}
+      PGDATABASE: ${POSTGRES_DB:-vedas}
+      TZ: ${TZ:-America/Sao_Paulo}
+      # Quantos dias de dump manter
+      KEEP_DAYS: ${BACKUP_KEEP_DAYS:-14}
+      # Intervalo entre backups, em segundos (padrão: 24h)
+      INTERVAL: ${BACKUP_INTERVAL:-86400}
+    volumes:
+      - vedas_backups:/backups
+    entrypoint:
+      - sh
+      - -c
+      - |
+        echo "[backup] iniciado - intervalo $${INTERVAL}s, retencao $${KEEP_DAYS} dias"
+        while true; do
+          FILE="/backups/vedas-$$(date +%Y%m%d-%H%M%S).sql.gz"
+          if pg_dump --no-owner --no-privileges | gzip > "$$FILE"; then
+            echo "[backup] gerado $$FILE ($$(du -h "$$FILE" | cut -f1))"
+          else
+            echo "[backup] FALHOU em $$(date)" >&2
+            rm -f "$$FILE"
+          fi
+          find /backups -name 'vedas-*.sql.gz' -mtime +$${KEEP_DAYS} -delete
+          sleep $${INTERVAL}
+        done
+    networks:
+      - vedas
+
+  # ── Administração do banco pelo navegador (profile: tools) ─────────────────
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: vedas-pgadmin
+    restart: unless-stopped
+    profiles: ["tools"]
+    logging: *default-logging
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${ADMIN_EMAIL:-admin@vedas.com.br}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_PASSWORD:?defina PGADMIN_PASSWORD para usar o pgAdmin}
+      PGADMIN_CONFIG_SERVER_MODE: "False"
+      PGADMIN_DISABLE_POSTFIX: "True"
+      TZ: ${TZ:-America/Sao_Paulo}
+    ports:
+      - "${PGADMIN_PORT:-5050}:80"
+    volumes:
+      - vedas_pgadmin:/var/lib/pgadmin
+    networks:
+      - vedas
+
+volumes:
+  vedas_pgdata:
+    name: vedas_pgdata
+  vedas_backups:
+    name: vedas_backups
+  vedas_pgadmin:
+    name: vedas_pgadmin
+
+networks:
+  vedas:
+    name: vedas
+    driver: bridge

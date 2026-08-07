@@ -1,0 +1,21 @@
+{
+  "name": "vedas",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CRM para loja de rações e pet shop — TypeScript, React, Postgres e Docker",
+  "scripts": {
+    "setup": "npm --prefix apps/api install && npm --prefix apps/web install",
+    "db:start": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 start",
+    "db:stop": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 stop",
+    "db:status": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 status",
+    "db:reset": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 reset",
+    "db:psql": "powershell -ExecutionPolicy Bypass -File scripts/localdb.ps1 psql",
+    "dev:api": "npm --prefix apps/api run dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build": "npm --prefix apps/api run build && npm --prefix apps/web run build",
+    "typecheck": "npm --prefix apps/api run typecheck && npm --prefix apps/web run typecheck"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

@@ -1,0 +1,42 @@
+name: vedas-dev
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Só a infraestrutura para desenvolvimento local: o Postgres da loja.
+# A API e o frontend você roda direto na máquina, com hot reload:
+#
+#   docker compose -f docker-compose.dev.yml up -d
+#   npm run dev:api     # http://localhost:3333
+#   npm run dev:web     # http://localhost:5173
+#
+# É a alternativa ao `npm run db:start` (cluster local sem Docker).
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: vedas-dev-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vedas
+      POSTGRES_PASSWORD: vedas
+      POSTGRES_DB: vedas
+      POSTGRES_INITDB_ARGS: "--encoding=UTF8"
+      # Mesma porta e mesmas credenciais do cluster criado por
+      # scripts/localdb.ps1, para que a DATABASE_URL padrão da API sirva aos dois.
+      POSTGRES_HOST_AUTH_METHOD: trust
+      TZ: America/Sao_Paulo
+      PGTZ: America/Sao_Paulo
+    ports:
+      # Só localhost — o banco de desenvolvimento não fica exposto na rede.
+      - "127.0.0.1:55432:5432"
+    volumes:
+      - vedas_dev_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vedas -d vedas"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  vedas_dev_pgdata:
+    name: vedas_dev_pgdata
