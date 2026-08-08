@@ -350,7 +350,11 @@ a:hover { text-decoration: underline; }
   z-index: 30;
 }
 
+.topbar-left { min-width: 0; flex: 1; }
+.topbar-actions { flex-shrink: 0; }
+
 .topbar .page-title { display: flex; flex-direction: column; min-width: 0; }
+.topbar .page-title h1 { white-space: nowrap; }
 .topbar .page-title span { font-size: 12px; color: var(--text-muted); }
 
 .icon-btn {
@@ -399,6 +403,17 @@ a:hover { text-decoration: underline; }
     z-index: 35;
   }
   .content { padding: 14px; }
+}
+
+/* ── Celular: a barra superior cede espaço para o título ───────────────────── */
+@media (max-width: 640px) {
+  .topbar { padding: 0 12px; gap: 8px; }
+  .topbar .page-title span { display: none; }
+  .topbar h1 { font-size: 18px; }
+  /* o botão de venda vira só o ícone */
+  .topbar-sale .btn-label { display: none; }
+  .topbar-sale { padding: 8px 11px; font-size: 15px; }
+  .content { padding: 12px; }
 }
 
 /* ── Cards e superfícies ───────────────────────────────────────────────────── */
@@ -539,7 +554,8 @@ a:hover { text-decoration: underline; }
   color: var(--text-secondary);
 }
 
-.field .help { font-size: 11.5px; color: var(--text-muted); }
+/* Vale também fora de .field — há textos de ajuda soltos em blocos de layout */
+.help { font-size: 11.5px; color: var(--text-muted); line-height: 1.5; }
 .field .error { font-size: 11.5px; color: var(--danger-text); }
 
 input, select, textarea {
@@ -913,6 +929,198 @@ tfoot td {
   background: var(--brand-soft);
   border-color: var(--brand-soft-border);
   color: var(--brand-soft-text);
+}
+
+/* ─────────────────────────────────────────────────────────────────────────────
+   CELULAR · cada linha de tabela vira um cartão
+
+   Numa tabela rolando na horizontal o usuário não vê o total nem alcança o
+   botão de ação sem arrastar de lado. Aqui a linha é reempilhada e o rótulo
+   de cada valor vem do cabeçalho, copiado para `data-label` por
+   useResponsiveTableLabels().
+   ───────────────────────────────────────────────────────────────────────────── */
+@media (max-width: 700px) {
+  .table-wrap { overflow-x: visible; }
+  .table-wrap table { display: block; font-size: 13.5px; }
+  .table-wrap thead { display: none; }
+  .table-wrap tbody { display: block; }
+
+  .table-wrap tbody tr {
+    display: block;
+    margin: 10px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--surface);
+    box-shadow: var(--shadow-xs);
+    overflow: hidden;
+  }
+  .table-wrap tbody tr:hover { background: var(--surface); }
+
+  .table-wrap tbody td {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 8px 13px;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    text-align: right;
+  }
+  .table-wrap tbody td:last-child { border-bottom: none; }
+
+  .table-wrap tbody td::before {
+    content: attr(data-label);
+    flex: 0 0 auto;
+    max-width: 42%;
+    text-align: left;
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--text-muted);
+    white-space: nowrap;
+  }
+
+  /* A primeira coluna vira o cabeçalho do cartão */
+  .table-wrap tbody td:first-child {
+    display: block;
+    text-align: left;
+    background: var(--surface-2);
+    padding: 10px 13px;
+  }
+  .table-wrap tbody td:first-child::before {
+    display: block;
+    max-width: none;
+    margin-bottom: 3px;
+  }
+
+  /* Coluna sem cabeçalho (ações) ocupa a linha inteira.
+     Vira uma faixa de botões que dividem a largura — com um botão só ele
+     preenche a linha; com dois ou mais, ficam lado a lado sem estourar. */
+  .table-wrap tbody td:not([data-label]) {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: stretch;
+    gap: 8px;
+    text-align: left;
+    padding: 10px 13px;
+  }
+  .table-wrap tbody td:not([data-label])::before { content: none; }
+  .table-wrap tbody td:not([data-label]) > * { flex: 1 1 auto; min-width: 0; }
+  .table-wrap tbody td:not([data-label]) .btn,
+  .table-wrap tbody td:not([data-label]) a {
+    width: auto;
+    justify-content: center;
+    text-align: center;
+  }
+  .table-wrap tbody td:not([data-label]) .row { display: contents; }
+  .table-wrap tbody td:empty { display: none; }
+
+  .table-wrap tfoot { display: block; background: var(--surface-2); }
+  .table-wrap tfoot tr { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+  .table-wrap tfoot td { display: block; border: none; padding: 6px 13px; }
+  .table-wrap tfoot td:first-child { text-align: left; }
+
+  /* O DANFE é um documento: mantém o formato de tabela */
+  .danfe .table-wrap { overflow-x: auto; }
+  .danfe .table-wrap table { display: table; }
+  .danfe .table-wrap thead { display: table-header-group; }
+  .danfe .table-wrap tbody { display: table-row-group; }
+  .danfe .table-wrap tbody tr { display: table-row; margin: 0; border: none; box-shadow: none; border-radius: 0; }
+  .danfe .table-wrap tbody td { display: table-cell; text-align: left; padding: 6px 8px; }
+  .danfe .table-wrap tbody td::before { content: none; }
+  .danfe .table-wrap tbody td:first-child { background: transparent; }
+  .danfe .table-wrap tbody td.num { text-align: right; }
+}
+
+/* ── Celular · densidade, toque e filtros ─────────────────────────────────── */
+@media (max-width: 700px) {
+  /* Filtros: cada campo ocupa a largura útil em vez das larguras fixas */
+  .toolbar { gap: 8px; }
+  .toolbar > input,
+  .toolbar > select,
+  .toolbar > .search,
+  .toolbar > .search-wrap { width: 100% !important; max-width: none !important; flex: 1 1 100%; }
+  .toolbar > .btn,
+  .toolbar > a.btn { flex: 1 1 auto; justify-content: center; }
+  .toolbar .spacer { display: none; }
+
+  /* Alvos de toque confortáveis */
+  .btn.sm { min-height: 36px; padding: 7px 12px; font-size: 13px; }
+  .btn { min-height: 40px; }
+  .icon-btn { width: 38px; height: 38px; }
+  .tabs button { padding: 11px 14px; }
+  .table-wrap tbody td .btn.ghost.sm { min-height: 34px; }
+
+  .pagination { flex-direction: column; align-items: stretch; gap: 10px; text-align: center; }
+  .pagination .pages { justify-content: space-between; }
+  .pagination .pages .btn { flex: 1; }
+
+  /* Cartões de indicador mais compactos: cabem mais na primeira dobra */
+  .stat { padding: 12px 13px; }
+  .stat .value { font-size: 20px; margin-top: 3px; }
+  .stat .value.sm { font-size: 15.5px; }
+  .stat .label { font-size: 10.5px; }
+  .stat .hint { font-size: 11.5px; }
+  .grid { gap: 11px; }
+  .card-header { padding: 12px 13px; }
+  .card-body { padding: 13px; }
+
+  /* Gráfico com poucos pontos não vira um bloco gigante */
+  .bars { height: 140px; justify-content: center; }
+  .bars .bar { max-width: 44px; }
+
+  /* Modal ocupa a tela toda, com o rodapé sempre alcançável */
+  .modal-backdrop { padding: 0; align-items: flex-end; }
+  .modal { max-width: none; max-height: 94vh; border-radius: var(--radius-lg) var(--radius-lg) 0 0; }
+  .modal-header { padding: 14px 16px; }
+  .modal-body { padding: 16px; }
+  .modal-footer { padding: 12px 16px; padding-bottom: max(12px, env(safe-area-inset-bottom)); }
+  .modal-footer .btn { flex: 1; justify-content: center; }
+
+  /* PDV: campos numéricos maiores para o dedo */
+  .qty-input, .price-input { width: 96px; min-height: 40px; }
+  .pos-total { font-size: 14.5px; }
+  .pos-total.grand { font-size: 23px; }
+
+  /* Cabeçalhos de página e linhas de ação */
+  .row.between.wrap > .row { flex-wrap: wrap; }
+  h1 { font-size: 19px; }
+
+  /* Links de texto dentro de tabelas ganham área de toque */
+  .table-wrap tbody a:not(.btn) {
+    display: inline-block;
+    padding: 6px 0;
+    min-height: 30px;
+  }
+  .table-wrap tbody a:not(.btn) .badge { padding: 5px 11px; }
+
+  /* Links de ação no cabeçalho dos cartões */
+  .card-header a:not(.btn) { display: inline-block; padding: 6px 0; min-height: 31px; }
+
+  /* Botão de remover dentro de chip (marcas) */
+  .badge button {
+    min-width: 30px;
+    min-height: 30px;
+    display: inline-grid;
+    place-items: center;
+    border-radius: var(--radius-full);
+    margin: -4px -6px -4px 2px;
+  }
+  .badge { padding: 5px 10px; font-size: 12px; }
+
+  /* Caixas de seleção maiores para o dedo */
+  input[type='checkbox'], input[type='radio'] { width: 19px; height: 19px; }
+  .checkbox { min-height: 34px; gap: 10px; }
+}
+
+/* Telas muito estreitas */
+@media (max-width: 380px) {
+  .content { padding: 10px; }
+  .table-wrap tbody tr { margin: 8px; }
+  .table-wrap tbody td { padding: 7px 11px; gap: 10px; }
+  .stat .value { font-size: 18.5px; }
+  .toolbar > .btn, .toolbar > a.btn { flex: 1 1 100%; }
 }
 
 /* ── Login ─────────────────────────────────────────────────────────────────── */

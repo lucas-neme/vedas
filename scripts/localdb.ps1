@@ -76,9 +76,13 @@ function Start-Cluster {
     Write-Host "[localdb] ja esta rodando na porta $Port"
   }
   else {
-    # Start-Process em vez de pipeline: o servidor herdaria o pipe do PowerShell
-    # e o console ficaria preso ate o Postgres encerrar.
-    Start-Process -FilePath $pgCtl -NoNewWindow -Wait -ArgumentList @(
+    # O servidor herda os handles de console de quem o inicia; sem redirecionar
+    # a saida, o terminal fica preso ate o Postgres encerrar. Por isso as tres
+    # saidas vao para arquivo.
+    $startLog = "$logFile.start"
+    Start-Process -FilePath $pgCtl -NoNewWindow -Wait `
+      -RedirectStandardOutput $startLog -RedirectStandardError "$startLog.err" `
+      -ArgumentList @(
       '-D', "`"$dataDir`"",
       '-o', "`"-p $Port -c listen_addresses=127.0.0.1`"",
       '-l', "`"$logFile`"",

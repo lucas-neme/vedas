@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
 import { BrandMark } from '@/components/BrandMark';
+import { useResponsiveTableLabels } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useBranding } from '@/contexts/BrandingContext';
 import { initials } from '@/lib/format';
@@ -49,7 +50,7 @@ const TITLES: Record<string, { title: string; subtitle: string }> = {
   '/produtos': { title: 'Produtos', subtitle: 'Catálogo da loja' },
   '/estoque': { title: 'Estoque', subtitle: 'Entradas, lotes, validades e perdas' },
   '/fornecedores': { title: 'Fornecedores', subtitle: 'Distribuidores e representantes' },
-  '/categorias': { title: 'Categorias e marcas', subtitle: 'Organização do catálogo' },
+  '/categorias': { title: 'Categorias', subtitle: 'Categorias e marcas do catálogo' },
   '/relatorios': { title: 'Relatórios', subtitle: 'Desempenho e oportunidades' },
   '/configuracoes': { title: 'Configurações', subtitle: 'Aparência, loja, responsável e fiscal' },
   '/usuarios': { title: 'Usuários', subtitle: 'Equipe com acesso ao sistema' },
@@ -67,6 +68,9 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLElement>(null);
+
+  useResponsiveTableLabels(contentRef);
 
   useEffect(() => {
     localStorage.setItem(COLLAPSE_KEY, collapsed ? '1' : '0');
@@ -149,7 +153,7 @@ export function Layout() {
 
       <div className="main">
         <header className="topbar">
-          <div className="row" style={{ minWidth: 0 }}>
+          <div className="row topbar-left">
             <button
               type="button"
               className="icon-btn plain"
@@ -163,14 +167,17 @@ export function Layout() {
               ☰
             </button>
             <div className="page-title">
-              <h1 className="truncate">{meta.title}</h1>
+              <h1>{meta.title}</h1>
               <span className="truncate">{meta.subtitle}</span>
             </div>
           </div>
 
-          <div className="row">
-            <NavLink to="/pdv" className="btn sm no-print">
-              🛒 Nova venda <span className="kbd" style={{ marginLeft: 2 }}>F2</span>
+          <div className="row topbar-actions">
+            <NavLink to="/pdv" className="btn sm no-print topbar-sale" title="Nova venda (F2)">
+              🛒
+              <span className="btn-label">
+                Nova venda <span className="kbd" style={{ marginLeft: 2 }}>F2</span>
+              </span>
             </NavLink>
 
             <button
@@ -237,7 +244,7 @@ export function Layout() {
           </div>
         </header>
 
-        <main className="content">
+        <main className="content" ref={contentRef}>
           <Outlet />
         </main>
       </div>

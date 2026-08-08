@@ -1,4 +1,44 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, type ReactNode, type RefObject } from 'react';
+
+/**
+ * Copia o cabeçalho de cada tabela para os `data-label` das células.
+ *
+ * No celular o CSS transforma cada linha num cartão e usa esse atributo como
+ * rótulo — sem isso, o usuário teria que rolar a tabela na horizontal para ver
+ * o total ou alcançar o botão de ação.
+ *
+ * Fica em um único lugar, observando a área de conteúdo, para valer
+ * automaticamente em toda tabela do sistema, inclusive as de modais.
+ */
+export function useResponsiveTableLabels(container: RefObject<HTMLElement>): void {
+  useEffect(() => {
+    const root = container.current;
+    if (!root) return;
+
+    const apply = () => {
+      for (const table of root.querySelectorAll('table')) {
+        if (table.closest('.danfe')) continue; // documento fiscal mantém o formato
+        const headers = Array.from(table.querySelectorAll('thead th')).map((th) =>
+          (th.textContent ?? '').trim(),
+        );
+        if (!headers.length) continue;
+        for (const row of table.querySelectorAll('tbody tr')) {
+          Array.from(row.children).forEach((cell, index) => {
+            const label = headers[index];
+            if (label) cell.setAttribute('data-label', label);
+            else cell.removeAttribute('data-label');
+          });
+        }
+      }
+    };
+
+    apply();
+    // Só childList/subtree: escrever data-label não dispara o observer.
+    const observer = new MutationObserver(apply);
+    observer.observe(root, { childList: true, subtree: true });
+    return () => observer.disconnect();
+  });
+}
 
 /* ── Estados de carregamento / vazio ─────────────────────────────────────── */
 
